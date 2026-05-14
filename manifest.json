@@ -1,0 +1,25 @@
+{
+  "name": "Фото-звіт об'єкту",
+  "short_name": "Фотозвіт",
+  "description": "Форма для фото-звітів об'єктів",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f1117",
+  "theme_color": "#3b7ff5",
+  "lang": "uk",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
