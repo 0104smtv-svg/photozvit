@@ -440,7 +440,7 @@
 // URL визначається автоматично (Apps Script)
 // ══════════════════════════════════════════
 const SCRIPT_URL = window.location.hostname.includes('github.io')
-  ? 'https://script.google.com/macros/s/AKfycbx5V7sMgMJLpwa2BgtGAFmfVV1eI4NzA8653FXo3Qg_OtD5_rdVH7v3EyoOpaWinNq9Dg/exec'
+  ? 'https://script.google.com/macros/s/AKfycby2CNAF3mMIVZ1JrFRliDCxzOauONbM8mApgRD30mSctV-IWcqqSzRrEKkucwwNt-C3xQ/exec'
   : '__SCRIPT_URL__';
 
 // ════════════════════════════════════════════════════════
@@ -1145,7 +1145,13 @@ window.addEventListener('offline', updateOnlineStatus);
 updateOnlineStatus();
 
 function getQueue() { return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); }
-function saveQueue(q) { localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); }
+function saveQueue(q) {
+  try {
+    localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
+  } catch(e) {
+    throw new Error('localStorage переповнений');
+  }
+}
 function updateQueueBadge() {
   const n = getQueue().length;
   queueBadge.textContent = n + ' в черзі';
@@ -1211,9 +1217,36 @@ async function handleSubmit() {
   };
 
   if (!isOnline) {
-    const q = getQueue(); q.push(payload); saveQueue(q); updateQueueBadge();
-    showSuccess(`Немає з'єднання. Збережено в чергу (${q.length}). Буде відправлено автоматично.`);
-    resetForm(); return;
+    // Перевірка вільного місця в localStorage
+    const payloadSize = new Blob([JSON.stringify(payload)]).size;
+    const queueSize   = new Blob([localStorage.getItem(QUEUE_KEY) || '']).size;
+    const cacheSize   = new Blob([localStorage.getItem(CACHE_KEY) || '']).size;
+    const usedKb      = Math.round((queueSize + cacheSize) / 1024);
+    const payloadKb   = Math.round(payloadSize / 1024);
+    const limitKb     = 5120;
+
+    if (usedKb + payloadKb > limitKb) {
+      const overKb = (usedKb + payloadKb) - limitKb;
+      showError(
+        `Недостатньо місця для збереження в чергу. ` +
+        `Обмеження: ${limitKb} КБ. ` +
+        `Перевищення на: ${overKb} КБ. ` +
+        `Знайдіть інтернет і спробуйте ще раз.`
+      );
+      return;
+    }
+
+    const q = getQueue();
+    q.push(payload);
+    try {
+      saveQueue(q);
+      updateQueueBadge();
+      showSuccess(`Немає з'єднання. Збережено в чергу (${q.length} звітів). Буде відправлено автоматично.`);
+      resetForm();
+    } catch(e) {
+      showError(`Не вдалося зберегти в чергу — недостатньо місця (${payloadKb} КБ). Знайдіть інтернет і спробуйте ще раз.`);
+    }
+    return;
   }
 
   submitBtn.disabled = true;
@@ -1253,11 +1286,15 @@ async function handleSubmit() {
 }
 
 function showSuccess(msg) {
-  statusMsg.textContent = msg; statusMsg.className = 'success';
+  statusMsg.textContent = msg;
+  statusMsg.className = 'success';
+  statusMsg.style.display = 'block';
   statusMsg.scrollIntoView({ behavior:'smooth', block:'center' });
 }
 function showError(msg) {
-  statusMsg.textContent = msg; statusMsg.className = 'error';
+  statusMsg.textContent = msg;
+  statusMsg.className = 'error';
+  statusMsg.style.display = 'block';
   statusMsg.scrollIntoView({ behavior:'smooth', block:'center' });
 }
 
