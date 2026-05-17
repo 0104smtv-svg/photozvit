@@ -440,7 +440,7 @@
 // URL визначається автоматично (Apps Script)
 // ══════════════════════════════════════════
 const SCRIPT_URL = window.location.hostname.includes('github.io')
-  ? 'https://script.google.com/macros/s/AKfycbycFpiEV-uB0Z65RFG5kXgwPMOW8JEfMaqSaq2PaPwArICoOtbbvrSOlIyW0nB-Wz3tCA/exec'
+  ? 'https://script.google.com/macros/s/AKfycbx5V7sMgMJLpwa2BgtGAFmfVV1eI4NzA8653FXo3Qg_OtD5_rdVH7v3EyoOpaWinNq9Dg/exec'
   : '__SCRIPT_URL__';
 
 // ════════════════════════════════════════════════════════
@@ -687,7 +687,9 @@ async function loadDict() {
     initSimpleAC();
     // Фонове оновлення
     fetchAllDicts().then(() => {
-      setDictStatus('ok', `Довідник: ${DB.length} абонентів`);
+      setTimeout(() => {
+        setDictStatus('ok', `${DB.length} абонентів у довіднику`);
+      }, 3000);
     }).catch(() => {});
     return;
   }
