@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Фото-звіт</title>
+<meta name="theme-color" content="#3b7ff5">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Фотозвіт">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Geologica:wght@300;400;500;600;700&display=swap');
 
@@ -433,7 +440,7 @@
 // URL визначається автоматично (Apps Script)
 // ══════════════════════════════════════════
 const SCRIPT_URL = window.location.hostname.includes('github.io')
-  ? 'https://script.google.com/macros/s/AKfycbwmw_RveYEpmrHSQUT8D8BysAFqP1-sG-CL8s39olYzqVlILDC2dPdvOP3-Xtl8LrqYAQ/exec'
+  ? 'https://script.google.com/macros/s/AKfycbycFpiEV-uB0Z65RFG5kXgwPMOW8JEfMaqSaq2PaPwArICoOtbbvrSOlIyW0nB-Wz3tCA/exec'
   : '__SCRIPT_URL__';
 
 // ════════════════════════════════════════════════════════
@@ -584,39 +591,138 @@ function setGpsStatus(state, text) {
 document.getElementById('gps-retry').addEventListener('click', startGeolocation);
 startGeolocation();
 
+const CACHE_KEY     = 'fotozvit_dict_v1';
+const CACHE_TTL_MS  = 60 * 60 * 1000; // 1 година — після цього оновлюємо у фоні
+
 // ════════════════════════════════════════════════════════
-// ДОВІДНИК
+// JsonP — завантаження без CORS обмежень
 // ════════════════════════════════════════════════════════
-let DB = [];
+function fetchJsonP(url) {
+  return new Promise((resolve, reject) => {
+    const cbName = '_cb_' + Math.random().toString(36).slice(2);
+    const script = document.createElement('script');
+    const timer  = setTimeout(() => {
+      cleanup();
+      reject(new Error('Timeout'));
+    }, 15000);
+
+    window[cbName] = function(data) {
+      cleanup();
+      resolve(data);
+    };
+
+    function cleanup() {
+      clearTimeout(timer);
+      delete window[cbName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+    }
+
+    script.onerror = () => { cleanup(); reject(new Error('Script error')); };
+    script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cbName;
+    document.head.appendChild(script);
+  });
+}
+
+// ════════════════════════════════════════════════════════
+// ДОВІДНИК — кеш + завантаження
+// ════════════════════════════════════════════════════════
+let DB        = [];
 let workersDB = [];
 let objectsDB = [];
 let dictReady = false;
 
-async function loadDict() {
+function loadFromCache() {
   try {
-    const [resA, resW, resO] = await Promise.all([
-      fetch(`${SCRIPT_URL}?action=getAbonents`),
-      fetch(`${SCRIPT_URL}?action=getWorkers`),
-      fetch(`${SCRIPT_URL}?action=getObjects`)
-    ]);
-    const [dataA, dataW, dataO] = await Promise.all([resA.json(), resW.json(), resO.json()]);
-
-    if (dataA.status === 'ok') DB = dataA.data;
-    if (dataW.status === 'ok') workersDB = dataW.data;
-    if (dataO.status === 'ok') objectsDB = dataO.data;
-
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return false;
+    const cached = JSON.parse(raw);
+    const age = Date.now() - (cached.ts || 0);
+    if (!cached.abonents) return false;
+    DB        = cached.abonents || [];
+    workersDB = cached.workers  || [];
+    objectsDB = cached.objects  || [];
     dictReady = true;
-    document.getElementById('dict-dot').className = 'dot ok';
-    document.getElementById('dict-label').textContent = `Довідник завантажено — ${DB.length} абонентів`;
+    return { fresh: age < CACHE_TTL_MS, age };
+  } catch(e) { return false; }
+}
+
+function saveToCache(abonents, workers, objects) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({
+      ts: Date.now(), abonents, workers, objects
+    }));
+  } catch(e) {}
+}
+
+function setDictStatus(state, text) {
+  document.getElementById('dict-dot').className = 'dot ' + state;
+  document.getElementById('dict-label').textContent = text;
+}
+
+async function fetchAllDicts() {
+  const isGitHub = window.location.hostname.includes('github.io');
+  const fetcher  = isGitHub ? fetchJsonP : (url) => fetch(url).then(r => r.json());
+
+  const [dataA, dataW, dataO] = await Promise.all([
+    fetcher(`${SCRIPT_URL}?action=getAbonents`),
+    fetcher(`${SCRIPT_URL}?action=getWorkers`),
+    fetcher(`${SCRIPT_URL}?action=getObjects`)
+  ]);
+
+  if (dataA.status === 'ok') DB        = dataA.data;
+  if (dataW.status === 'ok') workersDB = dataW.data;
+  if (dataO.status === 'ok') objectsDB = dataO.data;
+
+  saveToCache(DB, workersDB, objectsDB);
+  return true;
+}
+
+async function loadDict() {
+  const cached = loadFromCache();
+
+  if (cached && cached.fresh) {
+    // Кеш свіжий — показуємо одразу, оновлюємо у фоні
+    dictReady = true;
+    setDictStatus('ok', `Довідник: ${DB.length} абонентів (кеш)`);
+    initSimpleAC();
+    // Фонове оновлення
+    fetchAllDicts().then(() => {
+      setDictStatus('ok', `Довідник: ${DB.length} абонентів`);
+    }).catch(() => {});
+    return;
+  }
+
+  if (cached) {
+    // Кеш застарів — показуємо старий поки завантажуємо новий
+    dictReady = true;
+    setDictStatus('loading', `Оновлення довідника...`);
+    initSimpleAC();
+  } else {
+    setDictStatus('loading', 'Завантаження довідника...');
+  }
+
+  try {
+    await fetchAllDicts();
+    dictReady = true;
+    setDictStatus('ok', `Довідник: ${DB.length} абонентів`);
     setTimeout(() => {
-      document.getElementById('dict-label').textContent = `${DB.length} абонентів у довіднику`;
+      if (document.getElementById('dict-label').textContent.includes('абонент')) {
+        document.getElementById('dict-label').textContent = `${DB.length} абонентів у довіднику`;
+      }
     }, 3000);
+    initSimpleAC();
   } catch(err) {
-    document.getElementById('dict-dot').className = 'dot error';
-    document.getElementById('dict-label').textContent = 'Помилка завантаження довідника';
+    if (dictReady) {
+      // Є кеш — продовжуємо з ним
+      setDictStatus('ok', `Довідник: ${DB.length} абонентів (офлайн)`);
+    } else {
+      setDictStatus('error', 'Помилка завантаження довідника');
+    }
   }
 }
+
 loadDict();
+
 
 // ════════════════════════════════════════════════════════
 // РЕЖИМ ФОРМИ залежно від типу об'єкту
@@ -728,15 +834,14 @@ function setupSimpleAC(inputId, dropdownId, getList, onSelect) {
   });
 }
 
-// Ініціалізація після завантаження довідника
-const _simpleACTimer = setInterval(() => {
-  if (!dictReady) return;
-  clearInterval(_simpleACTimer);
+// Ініціалізація AC для працівника та об'єкту
+// Викликається після завантаження довідника (з loadDict або з кешу)
+function initSimpleAC() {
   setupSimpleAC('workerName', 'dd-worker', () => workersDB);
   setupSimpleAC('objectName', 'dd-object', () => objectsDB, (val, type) => {
     applyObjectType(type || '1');
   });
-}, 300);
+}
 
 
 const FIELDS = ['account','name','locality','street','building','apt'];
@@ -1168,6 +1273,17 @@ function resetForm() {
   });
   photos = [];
   renderPreviews();
+}
+
+// ════════════════════════════════════════════════════════
+// PWA — реєстрація Service Worker
+// ════════════════════════════════════════════════════════
+if ('serviceWorker' in navigator && window.location.hostname.includes('github.io')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('SW registered'))
+      .catch(err => console.log('SW error:', err));
+  });
 }
 </script>
 </body>
