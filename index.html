@@ -706,9 +706,7 @@ async function loadDict() {
     dictReady = true;
     setDictStatus('ok', `Довідник: ${DB.length} абонентів`);
     setTimeout(() => {
-      if (document.getElementById('dict-label').textContent.includes('абонент')) {
-        document.getElementById('dict-label').textContent = `${DB.length} абонентів у довіднику`;
-      }
+      setDictStatus('ok', `${DB.length} абонентів у довіднику`);
     }, 3000);
     initSimpleAC();
   } catch(err) {
