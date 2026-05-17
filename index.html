@@ -440,7 +440,7 @@
 // URL визначається автоматично (Apps Script)
 // ══════════════════════════════════════════
 const SCRIPT_URL = window.location.hostname.includes('github.io')
-  ? 'https://script.google.com/macros/s/AKfycby2CNAF3mMIVZ1JrFRliDCxzOauONbM8mApgRD30mSctV-IWcqqSzRrEKkucwwNt-C3xQ/exec'
+  ? 'https://script.google.com/macros/s/AKfycbyIs6VYvDSfiKwkVrC3ummmgely5NNXHHC2T4rHzPqxWOdesPHFHThjAjokwdmAolAoLg/exec'
   : '__SCRIPT_URL__';
 
 // ════════════════════════════════════════════════════════
@@ -1128,12 +1128,87 @@ function getBestCoords() {
 }
 
 // ════════════════════════════════════════════════════════
-// ОФЛАЙН / ЧЕРГА
+// ОФЛАЙН / ЧЕРГА — IndexedDB (без обмежень розміру)
 // ════════════════════════════════════════════════════════
 let isOnline = navigator.onLine;
 const offlineBanner = document.getElementById('offline-banner');
 const queueBadge   = document.getElementById('queue-badge');
-const QUEUE_KEY    = 'photo_form_queue_v2';
+const DB_NAME    = 'fotozvit_db';
+const DB_VERSION = 1;
+const STORE_NAME = 'queue';
+
+// ── Відкрити IndexedDB ──
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+      }
+    };
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+// ── Додати запис в чергу ──
+async function addToQueue(payload) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx    = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    const req   = store.add({ payload, ts: Date.now() });
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+// ── Отримати всі записи ──
+async function getAllFromQueue() {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx    = db.transaction(STORE_NAME, 'readonly');
+    const store = tx.objectStore(STORE_NAME);
+    const req   = store.getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+// ── Видалити запис ──
+async function removeFromQueue(id) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx    = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    const req   = store.delete(id);
+    req.onsuccess = () => resolve();
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+// ── Кількість записів ──
+async function getQueueCount() {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx    = db.transaction(STORE_NAME, 'readonly');
+    const store = tx.objectStore(STORE_NAME);
+    const req   = store.count();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = () => resolve(0);
+  });
+}
+
+async function updateQueueBadge() {
+  try {
+    const n = await getQueueCount();
+    queueBadge.textContent = n + ' в черзі';
+    queueBadge.classList.toggle('visible', n > 0);
+  } catch(e) {
+    queueBadge.classList.remove('visible');
+  }
+}
 
 function updateOnlineStatus() {
   isOnline = navigator.onLine;
@@ -1143,37 +1218,30 @@ function updateOnlineStatus() {
 window.addEventListener('online',  updateOnlineStatus);
 window.addEventListener('offline', updateOnlineStatus);
 updateOnlineStatus();
-
-function getQueue() { return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); }
-function saveQueue(q) {
-  try {
-    localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
-  } catch(e) {
-    throw new Error('localStorage переповнений');
-  }
-}
-function updateQueueBadge() {
-  const n = getQueue().length;
-  queueBadge.textContent = n + ' в черзі';
-  queueBadge.classList.toggle('visible', n > 0);
-}
 updateQueueBadge();
+
 document.getElementById('queue-badge').addEventListener('click', () => {
   if (confirm('Відправити всі записи з черги?')) tryFlushQueue();
 });
 
 async function tryFlushQueue() {
-  const queue = getQueue();
-  if (!queue.length || !isOnline) return;
-  const remaining = [];
-  for (const item of queue) {
-    try {
-      const r = await fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify(item) });
-      if (!r.ok) remaining.push(item);
-    } catch { remaining.push(item); }
+  if (!isOnline) return;
+  try {
+    const queue = await getAllFromQueue();
+    if (!queue.length) return;
+    for (const item of queue) {
+      try {
+        const r = await fetch(SCRIPT_URL, {
+          method: 'POST',
+          body: JSON.stringify(item.payload)
+        });
+        if (r.ok) await removeFromQueue(item.id);
+      } catch(e) { /* залишаємо в черзі */ }
+    }
+    await updateQueueBadge();
+  } catch(e) {
+    console.log('Flush queue error:', e);
   }
-  saveQueue(remaining);
-  updateQueueBadge();
 }
 
 // ════════════════════════════════════════════════════════
@@ -1217,34 +1285,14 @@ async function handleSubmit() {
   };
 
   if (!isOnline) {
-    // Перевірка вільного місця в localStorage
-    const payloadSize = new Blob([JSON.stringify(payload)]).size;
-    const queueSize   = new Blob([localStorage.getItem(QUEUE_KEY) || '']).size;
-    const cacheSize   = new Blob([localStorage.getItem(CACHE_KEY) || '']).size;
-    const usedKb      = Math.round((queueSize + cacheSize) / 1024);
-    const payloadKb   = Math.round(payloadSize / 1024);
-    const limitKb     = 5120;
-
-    if (usedKb + payloadKb > limitKb) {
-      const overKb = (usedKb + payloadKb) - limitKb;
-      showError(
-        `Недостатньо місця для збереження в чергу. ` +
-        `Обмеження: ${limitKb} КБ. ` +
-        `Перевищення на: ${overKb} КБ. ` +
-        `Знайдіть інтернет і спробуйте ще раз.`
-      );
-      return;
-    }
-
-    const q = getQueue();
-    q.push(payload);
     try {
-      saveQueue(q);
-      updateQueueBadge();
-      showSuccess(`Немає з'єднання. Збережено в чергу (${q.length} звітів). Буде відправлено автоматично.`);
+      await addToQueue(payload);
+      await updateQueueBadge();
+      const n = await getQueueCount();
+      showSuccess(`Немає з'єднання. Збережено в чергу (${n} звітів). Буде відправлено автоматично.`);
       resetForm();
     } catch(e) {
-      showError(`Не вдалося зберегти в чергу — недостатньо місця (${payloadKb} КБ). Знайдіть інтернет і спробуйте ще раз.`);
+      showError(`Не вдалося зберегти в чергу: ${e.message}. Спробуйте ще раз.`);
     }
     return;
   }
@@ -1276,8 +1324,13 @@ async function handleSubmit() {
     showSuccess(`✓ Звіт відправлено! Збережено ${data.photoCount} фото.${coordsInfo}`);
     resetForm();
   } catch(err) {
-    const q = getQueue(); q.push(payload); saveQueue(q); updateQueueBadge();
-    showError(`Помилка: ${err.message}. Збережено в чергу — спробуємо пізніше.`);
+    try {
+      await addToQueue(payload);
+      await updateQueueBadge();
+      showError(`Помилка: ${err.message}. Збережено в чергу — спробуємо пізніше.`);
+    } catch(e) {
+      showError(`Помилка відправки: ${err.message}.`);
+    }
   } finally {
     submitBtn.disabled = false;
     submitBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Надіслати звіт`;
