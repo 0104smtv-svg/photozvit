@@ -441,7 +441,7 @@
 // URL визначається автоматично (Apps Script)
 // ══════════════════════════════════════════
 const SCRIPT_URL = window.location.hostname.includes('github.io')
-  ? 'https://script.google.com/macros/s/AKfycbzZdjaOoGXoEvnj0h7HphgKK9Pyk7c_40g26XVFMoHUfkaLfLhWOxfUHlsxji_ax87u/exec'
+  ? 'https://script.google.com/macros/s/AKfycbxmJ3nbFr-JBMuDEVluRiIupvX0tn--NJA5u3nMUZXu7PRBYOzvPxuvWOW3MP2iL1yq/exec'
   : '__SCRIPT_URL__';
 
 // ════════════════════════════════════════════════════════
@@ -1214,11 +1214,10 @@ function updateOnlineStatus() {
 window.addEventListener('online',  updateOnlineStatus);
 window.addEventListener('offline', updateOnlineStatus);
 
-// Ініціалізація без виклику tryFlushQueue —
-// щоб при оновленні сторінки не було подвійної відправки
 isOnline = navigator.onLine;
 offlineBanner.classList.toggle('visible', !isOnline);
 updateQueueBadge();
+if (isOnline) tryFlushQueue();
 
 document.getElementById('queue-badge').addEventListener('click', () => {
   if (confirm('Відправити всі записи з черги?')) tryFlushQueue();
