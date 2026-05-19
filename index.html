@@ -296,7 +296,7 @@
     <div class="field">
       <label for="workerName">ПІБ працівника<span class="req">*</span></label>
       <div class="input-wrap" id="wrap-worker">
-        <input type="text" id="workerName" placeholder="Введіть ПІБ..." autocomplete="off">
+        <input type="text" id="workerName" placeholder="Введіть ПІБ..." autocomplete="new-password">
         <button class="clear-btn" data-target="workerName">✕</button>
         <div class="ac-dropdown" id="dd-worker"></div>
       </div>
@@ -309,7 +309,7 @@
     <div class="field">
       <label for="objectName">Назва об'єкту<span class="req">*</span></label>
       <div class="input-wrap" id="wrap-object">
-        <input type="text" id="objectName" placeholder="Введіть назву об'єкту..." autocomplete="off">
+        <input type="text" id="objectName" placeholder="Введіть назву об'єкту..." autocomplete="new-password">
         <button class="clear-btn" data-target="objectName">✕</button>
         <div class="ac-dropdown" id="dd-object"></div>
       </div>
@@ -323,7 +323,7 @@
     <div class="field">
       <label for="f-account">Особ. рах.<span class="req">*</span></label>
       <div class="input-wrap">
-        <input type="text" id="f-account" placeholder="Введіть рахунок..." autocomplete="off" data-field="account">
+        <input type="text" id="f-account" placeholder="Введіть рахунок..." autocomplete="new-password" data-field="account">
         <button class="clear-btn" data-target="f-account">✕</button>
         <div class="ac-dropdown" id="dd-account"></div>
       </div>
@@ -332,7 +332,7 @@
     <div class="field">
       <label for="f-name">Прізвище ІБ</label>
       <div class="input-wrap">
-        <input type="text" id="f-name" placeholder="Введіть прізвище..." autocomplete="off" data-field="name">
+        <input type="text" id="f-name" placeholder="Введіть прізвище..." autocomplete="new-password" data-field="name">
         <button class="clear-btn" data-target="f-name">✕</button>
         <div class="ac-dropdown" id="dd-name"></div>
       </div>
@@ -341,7 +341,7 @@
     <div class="field">
       <label for="f-locality">Населений пункт</label>
       <div class="input-wrap">
-        <input type="text" id="f-locality" placeholder="Введіть населений пункт..." autocomplete="off" data-field="locality">
+        <input type="text" id="f-locality" placeholder="Введіть населений пункт..." autocomplete="new-password" data-field="locality">
         <button class="clear-btn" data-target="f-locality">✕</button>
         <div class="ac-dropdown" id="dd-locality"></div>
       </div>
@@ -350,7 +350,7 @@
     <div class="field">
       <label for="f-street">Вулиця</label>
       <div class="input-wrap">
-        <input type="text" id="f-street" placeholder="Введіть вулицю..." autocomplete="off" data-field="street">
+        <input type="text" id="f-street" placeholder="Введіть вулицю..." autocomplete="new-password" data-field="street">
         <button class="clear-btn" data-target="f-street">✕</button>
         <div class="ac-dropdown" id="dd-street"></div>
       </div>
@@ -360,7 +360,7 @@
       <div class="field">
         <label for="f-building">Буд/др</label>
         <div class="input-wrap">
-          <input type="text" id="f-building" placeholder="12А" autocomplete="off" data-field="building">
+          <input type="text" id="f-building" placeholder="12А" autocomplete="new-password" data-field="building">
           <button class="clear-btn" data-target="f-building">✕</button>
           <div class="ac-dropdown" id="dd-building"></div>
         </div>
@@ -368,7 +368,7 @@
       <div class="field">
         <label for="f-apt">Кв/др</label>
         <div class="input-wrap">
-          <input type="text" id="f-apt" placeholder="34" autocomplete="off" data-field="apt">
+          <input type="text" id="f-apt" placeholder="34" autocomplete="new-password" data-field="apt">
           <button class="clear-btn" data-target="f-apt">✕</button>
           <div class="ac-dropdown" id="dd-apt"></div>
         </div>
@@ -440,7 +440,7 @@
 // URL визначається автоматично (Apps Script)
 // ══════════════════════════════════════════
 const SCRIPT_URL = window.location.hostname.includes('github.io')
-  ? 'https://script.google.com/macros/s/AKfycbxN7kYtQIGCS4yDS2TTH-kQ7DePTlxr31PaflSfoC1IuYEzP4tsAXJeNhVI5hvE4K0X/exec'
+  ? 'https://script.google.com/macros/s/AKfycbw1toIFtEoaYV9BHM_9OOIHKoEJn-qFGHDeOAczsqHzfm1My3mzVFL1iO5LQ_RGfr-7/exec'
   : '__SCRIPT_URL__';
 
 // ════════════════════════════════════════════════════════
