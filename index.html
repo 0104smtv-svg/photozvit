@@ -440,7 +440,7 @@
 // URL визначається автоматично (Apps Script)
 // ══════════════════════════════════════════
 const SCRIPT_URL = window.location.hostname.includes('github.io')
-  ? 'https://script.google.com/macros/s/AKfycbxN7kYtQIGCS4yDS2TTH-kQ7DePTlxr31PaflSfoC1IuYEzP4tsAXJeNhVI5hvE4K0X/exec'
+  ? 'https://script.google.com/macros/s/AKfycbztFeMHftUmu_aZ5uJ8RkVmebQJ8qKnE_jwikV1K5f1ie2oFIA_qYAm0EEG6YdJU8H6/exec'
   : '__SCRIPT_URL__';
 
 // ════════════════════════════════════════════════════════
@@ -823,7 +823,7 @@ function setupSimpleAC(inputId, dropdownId, getList, onSelect) {
     if (!input.value && inputId === 'objectName') applyObjectType('1');
     filter(input.value.trim());
   });
-  input.addEventListener('focus', () => { filter(input.value.trim()); });
+  input.addEventListener('focus', () => { closeAll(); filter(input.value.trim()); });
   input.addEventListener('keydown', e => {
     const items = dd.querySelectorAll('.ac-item-simple');
     if (!items.length || !dd.classList.contains('open')) return;
@@ -957,6 +957,9 @@ function renderDropdown(field, candidates, query) {
 
 function closeAll() {
   FIELDS.forEach(f => { dropdowns[f].classList.remove('open'); acIndex[f] = -1; });
+  // Закриваємо також dropdown для Працівник і Об'єкт
+  document.getElementById('dd-worker').classList.remove('open');
+  document.getElementById('dd-object').classList.remove('open');
 }
 
 const simpleFields = new Set(['locality', 'street', 'building', 'apt']);
@@ -992,6 +995,7 @@ FIELDS.forEach(field => {
     renderDropdown(field, candidates, q);
   });
   input.addEventListener('focus', () => {
+    closeAll(); // закриваємо всі інші dropdown перед відкриттям свого
     if (!dictReady) return;
     const candidates = getCandidates(field, input.value.trim());
     if (candidates.length) renderDropdown(field, candidates, input.value.trim());
