@@ -440,7 +440,7 @@
 // URL визначається автоматично (Apps Script)
 // ══════════════════════════════════════════
 const SCRIPT_URL = window.location.hostname.includes('github.io')
-  ? 'https://script.google.com/macros/s/AKfycbxEHVUUAnW6o5k2GQT6jUUOUO9oVBmheoV05Mb4qhhCJbMYrjriip9C5ZwSzDCwRTHr/exec'
+  ? 'https://script.google.com/macros/s/AKfycbzOf16n1MpfQbgfe2-zoej6neBKh15HSXKeUD1MjbedDhAdtOM0ZAvuAXmLlRb6ZKS0/exec'
   : '__SCRIPT_URL__';
 
 // ════════════════════════════════════════════════════════
@@ -1018,17 +1018,8 @@ function highlightItems(items, idx) {
 function hasOtherFilters(field) { return FIELDS.some(f => f !== field && inputs[f].value.trim()); }
 document.addEventListener('click', e => { if (!e.target.closest('.input-wrap')) closeAll(); });
 
-// ── Закриття клавіатури при скролі dropdown ──
-// Коли користувач починає гортати список — ховаємо клавіатуру через blur.
-// Це звільняє місце на екрані для перегляду списку.
-document.addEventListener('touchmove', e => {
-  if (e.target.closest('.ac-dropdown')) {
-    const active = document.activeElement;
-    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
-      active.blur();
-    }
-  }
-}, { passive: true });
+// Закриваємо всі dropdown при фокусі на textarea "Примітка"
+document.getElementById('f-note').addEventListener('focus', () => closeAll());
 
 document.querySelectorAll('.clear-btn').forEach(btn => {
   btn.addEventListener('click', () => {
