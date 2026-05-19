@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Фотозвіт</title>
-<meta name="theme-color" content="#3b7ff5">
+<meta name="theme-color" content="#2563eb">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -15,18 +15,18 @@
   @import url('https://fonts.googleapis.com/css2?family=Geologica:wght@300;400;500;600;700&display=swap');
 
   :root {
-    --bg: #0f1117;
-    --surface: #181c27;
-    --surface2: #1e2436;
-    --border: #2a3050;
-    --accent: #3b7ff5;
-    --accent2: #5b9bff;
-    --success: #22c55e;
-    --error: #ef4444;
-    --warning: #f59e0b;
-    --text: #e8ecf4;
-    --text2: #8b95b0;
-    --text3: #5a6480;
+    --bg: #f0f4f8;           /* Світлий фон сторінки */
+    --surface: #ffffff;      /* Білі картки/блоки */
+    --surface2: #e8edf5;     /* Вкладені елементи */
+    --border: #d0d8e8;       /* Рамки */
+    --accent: #2563eb;       /* Основний акцент */
+    --accent2: #3b7ff5;      /* Світліший акцент */
+    --success: #16a34a;      /* Зелений */
+    --error: #dc2626;        /* Червоний */
+    --warning: #d97706;      /* Жовтий */
+    --text: #1e2a3a;         /* Основний текст */
+    --text2: #4a5568;        /* Другорядний текст */
+    --text3: #718096;        /* Підказки, плейсхолдери */
     --radius: 12px;
     --font: 'Geologica', sans-serif;
   }
@@ -52,8 +52,8 @@
   .header-text p  { font-size: 12px; color: var(--text2); margin-top: 1px; }
 
   #offline-banner {
-    background: linear-gradient(90deg,#7c3a0a,#92400a);
-    color: #fde68a; font-size: 12px; font-weight: 500;
+    background: linear-gradient(90deg, #fef3c7, #fde68a);
+    color: #92400e; font-size: 12px; font-weight: 500;
     padding: 8px 20px; display: none;
     align-items: center; justify-content: center; gap: 6px;
   }
@@ -264,11 +264,11 @@
 <body>
 
 <header>
- <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-  <rect width="32" height="32" rx="8" fill="#3b7ff5" fill-opacity=".15"/>
-  <path d="M6 12a2 2 0 012-2h1.5l2-3h5l2 3H25a2 2 0 012 2v10a2 2 0 01-2 2H8a2 2 0 01-2-2V12z" stroke="#3b7ff5" stroke-width="1.6" stroke-linejoin="round"/>
-  <circle cx="16" cy="17" r="3.5" stroke="#3b7ff5" stroke-width="1.6"/>
-</svg>
+  <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+    <rect width="32" height="32" rx="8" fill="#3b7ff5" fill-opacity=".15"/>
+    <path d="M16 7L7 12v8l9 5 9-5v-8L16 7z" stroke="#3b7ff5" stroke-width="1.8" stroke-linejoin="round"/>
+    <path d="M7 12l9 5 9-5M16 17v8" stroke="#3b7ff5" stroke-width="1.8" stroke-linejoin="round"/>
+  </svg>
   <div class="header-text">
     <h1>Фотозвіт об'єкту</h1>
     <p>Заповніть форму та завантажте фото</p>
@@ -440,7 +440,7 @@
 // URL визначається автоматично (Apps Script)
 // ══════════════════════════════════════════
 const SCRIPT_URL = window.location.hostname.includes('github.io')
-  ? 'https://script.google.com/macros/s/AKfycbxBLbseI8tLS0M1SvN4uzvgnk78u2zJFCCc0r0p-Ty9LFCsgK5gtnbjYrsflR0OPD7x/exec'
+  ? 'https://script.google.com/macros/s/AKfycbzWzDxZiixS3NppP4HxpSK3kwHOGBgU3PF5-MuIZ4hFUfbWPlGGfcZWzYcXkENCHRSF/exec'
   : '__SCRIPT_URL__';
 
 // ════════════════════════════════════════════════════════
@@ -543,6 +543,7 @@ function dms2dec([d, m, s]) {
 // ГЕОЛОКАЦІЯ ПРИСТРОЮ
 // ════════════════════════════════════════════════════════
 let browserCoords = null; // {lat, lon, source:'browser'} або null
+let geoWatchId    = null; // ID відстеження watchPosition
 
 function startGeolocation() {
   setGpsStatus('loading', 'Визначення координат...');
@@ -554,7 +555,15 @@ function startGeolocation() {
     return;
   }
 
-  navigator.geolocation.getCurrentPosition(
+  // Зупиняємо попереднє відстеження якщо було (напр. при натисканні "Повторити")
+  if (geoWatchId !== null) {
+    navigator.geolocation.clearWatch(geoWatchId);
+    geoWatchId = null;
+  }
+
+  // watchPosition — тримає GPS чіп активним і оновлює координати постійно.
+  // Завдяки цьому getCurrentPosition при відправці отримує свіжі дані миттєво.
+  geoWatchId = navigator.geolocation.watchPosition(
     pos => {
       browserCoords = {
         lat: +pos.coords.latitude.toFixed(7),
@@ -565,6 +574,7 @@ function startGeolocation() {
       setGpsStatus('ok', `GPS пристрою${acc}`);
       document.getElementById('gps-coords').textContent =
         `${browserCoords.lat}, ${browserCoords.lon}`;
+      document.getElementById('gps-retry').classList.remove('visible');
     },
     err => {
       browserCoords = null;
@@ -577,7 +587,7 @@ function startGeolocation() {
       document.getElementById('gps-retry').classList.add('visible');
       document.getElementById('gps-coords').textContent = '';
     },
-    { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
   );
 }
 
@@ -1280,6 +1290,30 @@ async function handleSubmit() {
   if (!objectName)    { showError('Вкажіть назву об\'єкту'); return; }
   if (currentObjectType !== '2' && !account) { showError('Вкажіть особовий рахунок'); return; }
   if (!photos.length) { showError('Додайте хоча б одне фото'); return; }
+
+  // Оновлюємо координати безпосередньо перед відправкою.
+  // Оскільки watchPosition тримає чіп активним — відповідь приходить миттєво.
+  // Якщо GPS недоступний (вимкнений або заборонений) — помилка приходить
+  // одразу без очікування таймауту, відправка продовжується без затримки.
+  await new Promise(resolve => {
+    if (!navigator.geolocation) { resolve(); return; }
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        browserCoords = {
+          lat: +pos.coords.latitude.toFixed(7),
+          lon: +pos.coords.longitude.toFixed(7),
+          source: 'browser'
+        };
+        const acc = pos.coords.accuracy ? ` (±${Math.round(pos.coords.accuracy)} м)` : '';
+        setGpsStatus('ok', `GPS пристрою${acc}`);
+        document.getElementById('gps-coords').textContent =
+          `${browserCoords.lat}, ${browserCoords.lon}`;
+        resolve();
+      },
+      () => resolve(), // GPS недоступний — продовжуємо з тими координатами що є
+      { enableHighAccuracy: true, timeout: 3000, maximumAge: 0 }
+    );
+  });
 
   const coords = getBestCoords();
 
