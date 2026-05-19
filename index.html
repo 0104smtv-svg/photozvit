@@ -290,6 +290,15 @@
 
 <main>
 
+  <!-- Пастка для автозаповнення Chrome — приховані поля перехоплюють увагу браузера -->
+  <div style="display:none" aria-hidden="true">
+    <input type="text" name="username" tabindex="-1">
+    <input type="password" name="password" tabindex="-1">
+    <input type="email" name="email" tabindex="-1">
+    <input type="tel" name="phone" tabindex="-1">
+    <input type="text" name="address" tabindex="-1">
+  </div>
+
   <!-- Працівник -->
   <div class="section">
     <div class="section-title">Працівник</div>
@@ -440,7 +449,7 @@
 // URL визначається автоматично (Apps Script)
 // ══════════════════════════════════════════
 const SCRIPT_URL = window.location.hostname.includes('github.io')
-  ? 'https://script.google.com/macros/s/AKfycbw1toIFtEoaYV9BHM_9OOIHKoEJn-qFGHDeOAczsqHzfm1My3mzVFL1iO5LQ_RGfr-7/exec'
+  ? 'https://script.google.com/macros/s/AKfycbxgA3B0yGo9ovkh_-jDhnnayovSoo67n9RWxC5FRBmvao8KmNT7kC_ovcvGuKobz0ln/exec'
   : '__SCRIPT_URL__';
 
 // ════════════════════════════════════════════════════════
@@ -600,6 +609,20 @@ function setGpsStatus(state, text) {
 
 document.getElementById('gps-retry').addEventListener('click', startGeolocation);
 startGeolocation();
+
+// ── Блокування панелі автозаповнення Chrome ──
+// Chrome ігнорує autocomplete="off/new-password" на полях схожих на адресні.
+// Трюк: ставимо readonly при завантаженні, знімаємо при фокусі.
+// Браузер не показує панель автозаповнення для readonly полів.
+document.querySelectorAll('input[type="text"]').forEach(inp => {
+  inp.setAttribute('readonly', true);
+  inp.addEventListener('focus', function() {
+    this.removeAttribute('readonly');
+  }, { once: false });
+  inp.addEventListener('blur', function() {
+    this.setAttribute('readonly', true);
+  });
+});
 
 const CACHE_KEY     = 'fotozvit_dict_v1';
 const CACHE_TTL_MS  = 60 * 60 * 1000; // 1 година — після цього оновлюємо у фоні
