@@ -457,7 +457,7 @@
 // URL визначається автоматично (Apps Script)
 // ══════════════════════════════════════════
 const SCRIPT_URL = window.location.hostname.includes('github.io')
-  ? 'https://script.google.com/macros/s/AKfycbyiAh4D69gVJH44y2gbU5uQMzFMwNUuBSDA9EI6gNd0sqwB9PcUpNSAnzhKH2BNIIjw/exec'
+  ? 'https://script.google.com/macros/s/AKfycbzV4VQ8SM0j625jY5-fNwDh3UlT6FN6T7YukAYJ6WwP3_wgGlglrGkYJ_rNcD_uh5W7/exec'
   : '__SCRIPT_URL__';
 
 // ════════════════════════════════════════════════════════
@@ -561,6 +561,7 @@ function dms2dec([d, m, s]) {
 // ════════════════════════════════════════════════════════
 let browserCoords = null; // {lat, lon, source:'browser'} або null
 let geoWatchId    = null; // ID відстеження watchPosition
+let lastGpsUpdate = null; // час останнього оновлення координат від watchPosition
 
 function startGeolocation() {
   setGpsStatus('loading', 'Визначення координат...');
@@ -587,6 +588,7 @@ function startGeolocation() {
         lon: +pos.coords.longitude.toFixed(7),
         source: 'browser'
       };
+      lastGpsUpdate = Date.now(); // фіксуємо час останнього оновлення
       const acc = pos.coords.accuracy ? ` (±${Math.round(pos.coords.accuracy)} м)` : '';
       setGpsStatus('ok', `GPS пристрою${acc}`);
       document.getElementById('gps-coords').textContent =
@@ -617,6 +619,20 @@ function setGpsStatus(state, text) {
 
 document.getElementById('gps-retry').addEventListener('click', startGeolocation);
 startGeolocation();
+
+// ── Таймер перевірки свіжості GPS ──
+// watchPosition на Android не завжди викликає error callback при вимкненні GPS —
+// він просто мовчить. Таймер виявляє це і оновлює індикатор.
+// Спрацьовує кожні 10 секунд, поріг втрати сигналу — 15 секунд.
+setInterval(() => {
+  if (lastGpsUpdate && Date.now() - lastGpsUpdate > 15000) {
+    browserCoords = null;
+    lastGpsUpdate = null;
+    setGpsStatus('error', 'GPS сигнал втрачено');
+    document.getElementById('gps-retry').classList.add('visible');
+    document.getElementById('gps-coords').textContent = '';
+  }
+}, 10000);
 
 const CACHE_KEY     = 'fotozvit_dict_v1';
 const CACHE_TTL_MS  = 60 * 60 * 1000; // 1 година — після цього оновлюємо у фоні
